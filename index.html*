@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fitz's World Cup 2026 Photo Booth</title>
+    <style>
+        :root {
+            --pitch-green: #1e5a38;
+            --stadium-dark: #0d2619;
+            --gold: #f1c40f;
+            --white: #ffffff;
+            --booth-red: #e74c3c;
+            --green-action: #2ecc71;
+            --admin-gray: #34495e;
+            --print-blue: #3498db;
+            --strip-blue: #0f4c81; 
+        }
+
+        body {
+            margin: 0;
+            padding: 25px 10px 15px 10px; 
+            box-sizing: border-box;
+            background: radial-gradient(circle, #1e5a38 0%, var(--stadium-dark) 100%);
+            font-family: 'Impact', 'Arial Black', sans-serif;
+            color: var(--white);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        h1 {
+            text-transform: uppercase;
+            font-size: 2.1rem;
+            margin: 5px 0 15px 0;
+            text-shadow: 3px 3px 0px #000;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .booth-widescreen-layout {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: flex-start;
+            justify-content: center;
+            max-width: 960px;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .booth-box {
+            position: relative;
+            width: 640px;
+            height: 480px;
+            border: 10px solid #fff;
+            border-radius: 16px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.7);
+            background-color: #111;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        #webcam { 
+            position: absolute;
+            top: 0; left: 0;
+            width: 1px; height: 1px;
+            opacity: 0.01;
+            pointer-events: none;
+        }
+
+        #boothCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .right-sidebar-controls {
+            display: flex;
+            flex-direction: column;
+            width: 260px;
+            gap: 12px;
+        }
+
+        .section-title {
+            margin: 0 0 2px 0;
+            text-transform: uppercase;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 0px #000;
+        }
+
+        .frame-selectors {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .frame-btn {
+            background: #222;
+            color: #fff;
+            border: 3px solid #555;
+            padding: 8px 10px;
+            font-family: 'Impact', sans-serif;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .frame-btn:hover { border-color: var(--gold); }
+        .frame-btn.active {
+            background: var(--gold);
+            color: #000;
+            border-color: #fff;
+            box-shadow: 0 0 12px var(--gold);
+        }
+
+        .snap-btn {
+            background: linear-gradient(180deg, var(--booth-red) 0%, #c0392b 100%);
+            border: 4px solid #fff;
+            color: white;
+            padding: 12px 20px;
+            font-size: 1.3rem;
+            font-family: 'Impact', sans-serif;
+            text-transform: uppercase;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            text-align: center;
+            margin-top: 5px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .snap-btn:disabled { background: #7f8c8d; cursor: not-allowed; opacity: 0.7; }
+
+        #statusFeedback {
+            font-size: 1.1rem;
+            color: var(--gold);
+            text-shadow: 1px 1px 0 #000;
+            min-height: 1.4em;
+            font-family: sans-serif;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .admin-toggle-bar {
+            margin-top: 10px;
+            width: 100%;
+            max-width: 920px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .admin-btn {
+            background: var(--admin-gray);
+            color: #fff;
+            border: 2px solid #555;
+            padding: 6px 14px;
+            font-family: sans-serif;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .admin-dashboard {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 15, 15, 0.98);
+            z-index: 200;
+            box-sizing: border-box;
+            padding: 30px;
+            flex-direction: column;
+            overflow-y: auto;
+            font-family: sans-serif;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--gold);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .admin-title {
+            font-size: 1.8rem;
+            font-family: 'Impact', sans-serif;
+            color: var(--gold);
+            margin: 0;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .clear-btn {
+            background: var(--booth-red);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .close-admin-btn {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 24px;
+            width: 100%;
+        }
+
+        .gallery-card {
+            background: #222;
+            border: 3px solid #444;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .gallery-card .thumb-preview {
+            max-height: 250px;
+            width: auto;
+            border: 2px solid white;
+            background: white;
+        }
+
+        .card-btn-container {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .card-action-btn {
+            background: var(--print-blue);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            flex: 1;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .card-action-btn.dl-theme { background: var(--green-action); }
+
+        #countdown {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 9rem;
+            color: var(--gold);
+            text-shadow: 6px 6px 0px #000;
+            display: none;
+            z-index: 10;
+        }
+
+        #flashLayer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #fff; opacity: 0; pointer-events: none; z-index: 20;
+        }
+        .flash-trigger { animation: suddenFlash 0.3s ease-out; }
+        @keyframes suddenFlash { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+        .kids-preview-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 150;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .kids-preview-content {
+            background: linear-gradient(135deg, #1e5a38 0%, #0d2619 100%);
+            border: 6px solid var(--gold);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            max-width: 90%;
+            max-height: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .kids-preview-content h2 {
+            margin: 0;
+            color: var(--gold);
+            font-size: 2rem;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .kids-strip-img {
+            max-height: 65vh;
+            width: auto;
+            border: 4px solid white;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+
+        .auto-close-timer {
+            font-family: sans-serif;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #fff;
+            background: rgba(0,0,0,0.4);
+            padding: 6px 16px;
+            border-radius: 20px;
+        }
+
+        #hiddenStitchCanvas, #hiddenPreviewCanvas {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>⚽ FITZ'S 8th BIRTHDAY BOOTH 🏆</h1>
+
+    <div class="booth-widescreen-layout">
+        
+        <div class="booth-box">
+            <video id="webcam" autoplay playsinline muted webkit-playsinline></video>
+            <canvas id="boothCanvas" width="640" height="480"></canvas>
+            <div id="countdown">3</div>
+            <div id="flashLayer"></div>
+        </div>
+
+        <div class="right-sidebar-controls">
+            <div class="section-title">Select Card / Border:</div>
+            <div class="frame-selectors">
+                <button class="frame-btn active" id="btn-birthday" onclick="selectFrame('birthday', event)">🎉 Happy Birthday Fitz!</button>
+                <button class="frame-btn" onclick="selectFrame('worldcup', event)">🏆 World Cup Let's Go!</button>
+                <button class="frame-btn" onclick="selectFrame('usa', event)">🇺🇸 USA Panini Card</button>
+                <button class="frame-btn" onclick="selectFrame('mexico', event)">🇲🇽 Mexico Panini Card</button>
+                <button class="frame-btn" onclick="selectFrame('argentina', event)">🇦🇷 Argentina Panini Card</button>
+                <button class="frame-btn" onclick="selectFrame('yr2026', event)">🏁 2026 Grid Border</button>
+            </div>
+
+            <button class="snap-btn" id="snapBtn" onclick="startPhotoSequence()">Take 3-Shot Strip!</button>
+            <div id="statusFeedback">Ready for action!</div>
+        </div>
+
+    </div>
+
+    <div class="admin-toggle-bar">
+        <button class="admin-btn" onclick="openAdminDashboard()">⚙️ Open Print Queue Manager</button>
+    </div>
+
+    <div class="kids-preview-modal" id="kidsPreviewModal">
+        <div class="kids-preview-content">
+            <h2>🔥 LOOKING GOOD! HERE IS YOUR STRIP! 🔥</h2>
+            <img class="kids-strip-img" id="kidsPreviewImg" src="" alt="Your Strip Preview">
+            <div class="auto-close-timer" id="autoCloseText">Next team up in 20...</div>
+        </div>
+    </div>
+
+    <div class="admin-dashboard" id="adminDashboard">
+        <div class="admin-header">
+            <div class="admin-title">🖨️ Print Queue Master Dashboard</div>
+            <div class="admin-actions">
+                <button class="close-admin-btn" style="background:var(--green-action);" onclick="downloadAllStrips()">📥 Download All</button>
+                <button class="clear-btn" onclick="clearPrintQueue()">🗑️ Reset & Clear Queue</button>
+                <button class="close-admin-btn" onclick="closeAdminDashboard()">Close Panel</button>
+            </div>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+
+    <canvas id="hiddenStitchCanvas" width="1200" height="800"></canvas>
+    <canvas id="hiddenPreviewCanvas" width="800" height="1200"></canvas>
+
+    <script>
+        const video = document.getElementById('webcam');
+        const liveCanvas = document.getElementById('boothCanvas');
+        const liveCtx = liveCanvas.getContext('2d');
+        const hiddenStitchCanvas = document.getElementById('hiddenStitchCanvas');
+        const stitchCtx = hiddenStitchCanvas.getContext('2d');
+        const hiddenPreviewCanvas = document.getElementById('hiddenPreviewCanvas');
+        const previewCtx = hiddenPreviewCanvas.getContext('2d');
+        
+        const snapBtn = document.getElementById('snapBtn');
+        const statusFeedback = document.getElementById('statusFeedback');
+        const countdownDiv = document.getElementById('countdown');
+        const flashLayer = document.getElementById('flashLayer');
+        const adminDashboard = document.getElementById('adminDashboard');
+        const galleryGrid = document.getElementById('galleryGrid');
+
+        const kidsPreviewModal = document.getElementById('kidsPreviewModal');
+        const kidsPreviewImg = document.getElementById('kidsPreviewImg');
+        const autoCloseText = document.getElementById('autoCloseText');
+
+        let currentFrame = 'birthday';
+        let capturedFrames = [];
+        let masterPrintDataUrl = ""; 
+        let previewDataUrl = "";
+
+        let livePrintQueueMemory = [];
+        let stripCounter = 0;
+
+        const customHeaderImg = new Image();
+        customHeaderImg.src = 'header.png';
+        const customFooterImg = new Image();
+        customFooterImg.src = 'footer.png';
+
+        const frames = {
+            birthday: new Image(),
+            worldcup: new Image(),
+            usa: new Image(),
+            mexico: new Image(),
+            argentina: new Image(),
+            yr2026: new Image()
+        };
+
+        frames.birthday.src = 'Happy Birthday.png';
+        frames.worldcup.src = 'World Cup.png';
+        frames.usa.src = 'USA Panini.png';
+        frames.mexico.src = 'Mexico Panini.png';
+        frames.argentina.src = 'Argentina Panini.png';
+        frames.yr2026.src = '2026.png';
+
+        function selectFrame(frameId, e) {
+            currentFrame = frameId;
+            document.querySelectorAll('.frame-btn').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+        }
+
+        async function startCamera() {
+            try {
+                const constraints = {
+                    audio: false,
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" }
+                };
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = stream;
+                await video.play();
+                updateQueueStatus();
+                requestAnimationFrame(renderLoop);
+            } catch (err) {
+                statusFeedback.innerText = "⚠️ Camera blocked.";
+                console.error(err);
+            }
+        }
+
+        function renderLoop() {
+            liveCtx.clearRect(0, 0, liveCanvas.width, liveCanvas.height);
+            liveCtx.save();
+            liveCtx.translate(liveCanvas.width, 0);
+            liveCtx.scale(-1, 1);
+            
+            if (video.readyState >= 2) { 
+                liveCtx.drawImage(video, 0, 0, liveCanvas.width, liveCanvas.height);
+            } else {
+                liveCtx.fillStyle = "#111";
+                liveCtx.fillRect(0, 0, liveCanvas.width, liveCanvas.height);
+            }
+            liveCtx.restore();
+
+            const activeImage = frames[currentFrame];
+            if (activeImage.complete && activeImage.naturalWidth !== 0) {
+                liveCtx.drawImage(activeImage, 0, 0, liveCanvas.width, liveCanvas.height);
+            }
+            requestAnimationFrame(renderLoop);
+        }
+
+        async function startPhotoSequence() {
+            if (video.readyState < 2) return;
+            snapBtn.disabled = true;
+            capturedFrames = [];
+
+            await takeSinglePhoto(1);
+            await takeSinglePhoto(2);
+            await takeSinglePhoto(3);
+
+            statusFeedback.innerText = "⚡ Saving strip directly to queue...";
+            
+            try {
+                generateTwin4x6Sheet();
+                queuePrintJob();
+                showKidsQuickPreview();
+            } catch (err) {
+                console.error("Strip generation failed:", err);
+                statusFeedback.innerText = "⚠️ Save failed: " + err.name + " — " + err.message;
+                snapBtn.disabled = false;
+            }
+        }
+
+        function takeSinglePhoto(photoNumber) {
+            return new Promise((resolve) => {
+                statusFeedback.innerText = `📸 Shot ${photoNumber} of 3 incoming!`;
+                let currentCount = 3;
+                countdownDiv.innerText = currentCount;
+                countdownDiv.style.display = 'block';
+
+                const timerInterval = setInterval(() => {
+                    currentCount--;
+                    if (currentCount > 0) {
+                        countdownDiv.innerText = currentCount;
+                    } else {
+                        clearInterval(timerInterval);
+                        countdownDiv.style.display = 'none';
+                        
+                        flashLayer.classList.add('flash-trigger');
+                        setTimeout(() => flashLayer.classList.remove('flash-trigger'), 300);
+
+                        const snapCanvas = document.createElement('canvas');
+                        snapCanvas.width = liveCanvas.width;
+                        snapCanvas.height = liveCanvas.height;
+                        snapCanvas.getContext('2d').drawImage(liveCanvas, 0, 0);
+                        capturedFrames.push(snapCanvas);
+                        setTimeout(resolve, 1200);
+                    }
+                }, 1000);
+            });
+        }
+
+        function buildSingleStrip() {
+            const stripW = 360;  
+            const targetPhotoH = 270; 
+            const gap = 16; 
+            const headerH = 100; 
+            const footerH = 90;  
+            
+            // Added 20px padding on all sides
+            const stripMargin = 20; 
+            
+            const totalH = headerH + (targetPhotoH * 3) + (gap * 2) + footerH + (stripMargin * 2);
+            const totalW = stripW + (stripMargin * 2);
+
+            const stripCanvas = document.createElement('canvas');
+            stripCanvas.width = totalW;
+            stripCanvas.height = totalH;
+            const ctx = stripCanvas.getContext('2d');
+
+            // Fill background with white
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, totalW, totalH);
+
+            const startX = stripMargin;
+            const startY = stripMargin;
+
+            capturedFrames.forEach((img, index) => {
+                const yOffset = startY + headerH + (index * (targetPhotoH + gap));
+                const photoW = stripW - 24; 
+                const photoX = startX + 12;
+                
+                ctx.drawImage(img, 0, 0, 640, 480, photoX, yOffset, photoW, targetPhotoH);
+            });
+
+            if (customHeaderImg.complete && customHeaderImg.naturalWidth !== 0) {
+                ctx.drawImage(customHeaderImg, startX, startY, stripW, headerH);
+            }
+
+            const footerY = startY + headerH + (targetPhotoH * 3) + (gap * 2);
+            if (customFooterImg.complete && customFooterImg.naturalWidth !== 0) {
+                ctx.drawImage(customFooterImg, startX, footerY, stripW, footerH);
+            } else {
+                ctx.fillStyle = "#0f4c81"; 
+                ctx.fillRect(startX, footerY, stripW, footerH);
+                ctx.fillStyle = "#f1c40f"; 
+                ctx.fillRect(startX, footerY, stripW, 5);
+                ctx.fillStyle = "#ffffff";
+                ctx.textAlign = "center";
+                ctx.font = "bold 24px 'Impact', sans-serif";
+                ctx.fillText("HAPPY 8th BIRTHDAY FITZ!", startX + (stripW / 2), footerY + footerH - 36);
+            }
+
+            return stripCanvas;
+        }
+
+        function generateTwin4x6Sheet() {
+            const singleStrip = buildSingleStrip();
+            
+            stitchCtx.fillStyle = "#ffffff"; 
+            stitchCtx.fillRect(0, 0, 1200, 800);
+
+            // Draw two strips onto the 4x6 sheet (1200x800)
+            // Scaling logic: Strip is roughly 400x1200, need to fit inside 1200x800 landscape
+            // We rotate and center them.
+            stitchCtx.save();
+            stitchCtx.translate(600, 200); 
+            stitchCtx.rotate(-90 * Math.PI / 180); 
+            stitchCtx.drawImage(singleStrip, 0, 0, singleStrip.width, singleStrip.height, -singleStrip.height/2, -singleStrip.width/2, singleStrip.height, singleStrip.width);
+            stitchCtx.restore();
+
+            stitchCtx.save();
+            stitchCtx.translate(600, 600); 
+            stitchCtx.rotate(-90 * Math.PI / 180); 
+            stitchCtx.drawImage(singleStrip, 0, 0, singleStrip.width, singleStrip.height, -singleStrip.height/2, -singleStrip.width/2, singleStrip.height, singleStrip.width);
+            stitchCtx.restore();
+
+            masterPrintDataUrl = hiddenStitchCanvas.toDataURL('image/png');
+
+            // Preview logic
+            previewCtx.fillStyle = "#ffffff";
+            previewCtx.fillRect(0, 0, 800, 1200);
+            previewCtx.drawImage(singleStrip, 0, 0, singleStrip.width, singleStrip.height, 4, 30, 392, 1140);
+            previewCtx.drawImage(singleStrip, 0, 0, singleStrip.width, singleStrip.height, 404, 30, 392, 1140);
+
+            previewDataUrl = hiddenPreviewCanvas.toDataURL('image/png');
+        }
+
+        function queuePrintJob() {
+            livePrintQueueMemory.push({
+                printImg: masterPrintDataUrl,
+                previewImg: previewDataUrl
+            });
+            updateQueueStatus();
+        }
+
+        function downloadAllStrips() {
+            if (livePrintQueueMemory.length === 0) {
+                alert("No strips in the queue yet!");
+                return;
+            }
+            livePrintQueueMemory.forEach((item, idx) => {
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = item.printImg;
+                    link.download = `fitz-booth-strip-${idx + 1}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, idx * 400); 
+            });
+        }
+
+        function showKidsQuickPreview() {
+            kidsPreviewImg.src = previewDataUrl;
+            kidsPreviewModal.style.display = "flex";
+            
+            let timeLeft = 10; 
+            autoCloseText.innerText = `Next team up in ${timeLeft}...`;
+
+            const countdown = setInterval(() => {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    autoCloseText.innerText = `Next team up in ${timeLeft}...`;
+                } else {
+                    clearInterval(countdown);
+                    kidsPreviewModal.style.display = "none";
+                    kidsPreviewImg.src = ""; 
+                    masterPrintDataUrl = "";
+                    previewDataUrl = "";
+                    snapBtn.disabled = false;
+                    updateQueueStatus();
+                }
+            }, 1000);
+        }
+
+        function updateQueueStatus() {
+            if(livePrintQueueMemory.length === 0) {
+                statusFeedback.innerText = "Ready for action! (0 strips waiting)";
+            } else {
+                statusFeedback.innerText = `Ready! (${livePrintQueueMemory.length} strips waiting to be printed in the Dashboard)`;
+            }
+        }
+
+        function openAdminDashboard() {
+            galleryGrid.innerHTML = "";
+            
+            if(livePrintQueueMemory.length === 0) {
+                galleryGrid.innerHTML = `<p style="color:#aaa; font-style:italic; grid-column: 1/-1; text-align:center;">The queue is empty. Go take some photos!</p>`;
+            } else {
+                livePrintQueueMemory.forEach((item, idx) => {
+                    const card = document.createElement('div');
+                    card.className = "gallery-card";
+                    card.innerHTML = `
+                        <strong style="color:var(--gold); font-size:1.1rem;">Strip #${idx + 1}</strong>
+                        <img class="thumb-preview" src="${item.previewImg}">
+                        <div class="card-btn-container">
+                            <button class="card-action-btn" onclick="printSingleCard('${item.printImg}')">👁️ View/Print</button>
+                            <a href="${item.printImg}" download="booth-strip-${idx+1}.png" class="card-action-btn dl-theme">💾 Save File</a>
+                        </div>
+                    `;
+                    galleryGrid.appendChild(card);
+                });
+            }
+            adminDashboard.style.display = "flex";
+        }
+
+        function printSingleCard(imgUrl) {
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return;
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Print Master</title>
+                    <style>
+                        @page { size: 6in 4in landscape; margin: 0; }
+                        html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; }
+                        body { display: flex; justify-content: center; align-items: center; }
+                        img { width: 100%; height: 100%; object-fit: contain; display: block; }
+                    </style>
+                </head>
+                <body>
+                    <img src="${imgUrl}" onload="setTimeout(function(){ window.print(); window.close(); }, 300);">
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+        }
+
+        function closeAdminDashboard() {
+            adminDashboard.style.display = "none";
+            updateQueueStatus();
+        }
+
+        function clearPrintQueue() {
+            const accessCode = prompt("Please enter the Admin Security Code to reset the print manager cache:");
+            
+            if (accessCode === null) {
+                return; 
+            }
+            
+            if (accessCode === "5283") {
+                if(confirm("Passcode confirmed. Are you completely sure you want to delete all saved session cache strips?")) {
+                    livePrintQueueMemory = [];
+                    openAdminDashboard(); 
+                }
+            } else {
+                alert("⛔ Invalid Access Code. Print queue protection remains active.");
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', startCamera);
+    </script>
+</body>
+</html>
