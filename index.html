@@ -373,6 +373,7 @@
 
             <button class="snap-btn" id="snapBtn" onclick="startPhotoSequence()">Take 3-Shot Strip!</button>
             <div id="statusFeedback">Ready for action!</div>
+            <div id="downloadStatus" style="font-family: sans-serif; font-size: 0.95rem; color: #fff; text-align:center;"></div>
         </div>
 
     </div>
@@ -393,6 +394,7 @@
         <div class="admin-header">
             <div class="admin-title">🖨️ Print Queue Master Dashboard</div>
             <div class="admin-actions">
+                <button class="close-admin-btn" id="filterToggleBtn" style="background:var(--print-blue);" onclick="toggleGalleryFilter()">Show: All</button>
                 <button class="close-admin-btn" style="background:var(--green-action);" onclick="downloadAllStrips()">📥 Download All</button>
                 <button class="clear-btn" onclick="clearPrintQueue()">🗑️ Reset & Clear Queue</button>
                 <button class="close-admin-btn" onclick="closeAdminDashboard()">Close Panel</button>
@@ -431,6 +433,7 @@
 
         let livePrintQueueMemory = [];
         let stripCounter = 0;
+        let galleryFilter = 'all'; // 'all' | 'undownloaded'
 
         // Load custom assets
         const customHeaderImg = new Image();
@@ -635,7 +638,8 @@
         function queuePrintJob() {
             livePrintQueueMemory.push({
                 printImg: masterPrintDataUrl,
-                previewImg: previewDataUrl
+                previewImg: previewDataUrl,
+                downloaded: false
             });
             updateQueueStatus();
         }
@@ -653,8 +657,28 @@
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
+                    item.downloaded = true;
+                    if (idx === livePrintQueueMemory.length - 1) {
+                        updateQueueStatus();
+                        if (adminDashboard.style.display === "flex") openAdminDashboard();
+                    }
                 }, idx * 400); 
             });
+        }
+
+        function markDownloaded(idx) {
+            if (livePrintQueueMemory[idx]) {
+                livePrintQueueMemory[idx].downloaded = true;
+                updateQueueStatus();
+                openAdminDashboard();
+            }
+        }
+
+        function toggleGalleryFilter() {
+            galleryFilter = (galleryFilter === 'all') ? 'undownloaded' : 'all';
+            const btn = document.getElementById('filterToggleBtn');
+            btn.innerText = (galleryFilter === 'all') ? 'Show: All' : 'Show: Not Downloaded';
+            openAdminDashboard();
         }
 
         function showKidsQuickPreview() {
@@ -688,23 +712,43 @@
             } else {
                 statusFeedback.innerText = `Ready! (${livePrintQueueMemory.length} strips waiting to be printed in the Dashboard)`;
             }
+            const downloadStatusEl = document.getElementById('downloadStatus');
+            const undownloadedCount = livePrintQueueMemory.filter(item => !item.downloaded).length;
+            if (livePrintQueueMemory.length === 0) {
+                downloadStatusEl.innerText = "";
+            } else if (undownloadedCount === 0) {
+                downloadStatusEl.innerText = "✅ All strips downloaded!";
+            } else {
+                downloadStatusEl.innerText = `⬇️ ${undownloadedCount} strip${undownloadedCount === 1 ? '' : 's'} not yet downloaded`;
+            }
         }
 
         function openAdminDashboard() {
             galleryGrid.innerHTML = "";
-            
+
+            const visibleItems = livePrintQueueMemory
+                .map((item, idx) => ({ item, idx }))
+                .filter(({ item }) => galleryFilter === 'all' || !item.downloaded);
+
             if(livePrintQueueMemory.length === 0) {
                 galleryGrid.innerHTML = `<p style="color:#aaa; font-style:italic; grid-column: 1/-1; text-align:center;">The queue is empty. Go take some photos!</p>`;
+            } else if (visibleItems.length === 0) {
+                galleryGrid.innerHTML = `<p style="color:#aaa; font-style:italic; grid-column: 1/-1; text-align:center;">🎉 Everything in the queue has been downloaded!</p>`;
             } else {
-                livePrintQueueMemory.forEach((item, idx) => {
+                visibleItems.forEach(({ item, idx }) => {
                     const card = document.createElement('div');
                     card.className = "gallery-card";
+                    if (item.downloaded) card.style.opacity = "0.55";
+                    const badge = item.downloaded
+                        ? `<span style="background:var(--green-action); color:#000; font-size:0.75rem; font-weight:bold; padding:3px 10px; border-radius:12px;">✅ Downloaded</span>`
+                        : `<span style="background:var(--booth-red); color:#fff; font-size:0.75rem; font-weight:bold; padding:3px 10px; border-radius:12px;">⬇️ Not Downloaded</span>`;
                     card.innerHTML = `
                         <strong style="color:var(--gold); font-size:1.1rem;">Strip #${idx + 1}</strong>
+                        ${badge}
                         <img class="thumb-preview" src="${item.previewImg}">
                         <div class="card-btn-container">
                             <button class="card-action-btn" onclick="printSingleCard('${item.printImg}')">👁️ View/Print</button>
-                            <a href="${item.printImg}" download="booth-strip-${idx+1}.png" class="card-action-btn dl-theme">💾 Save File</a>
+                            <a href="${item.printImg}" download="booth-strip-${idx+1}.png" class="card-action-btn dl-theme" onclick="markDownloaded(${idx})">💾 Save File</a>
                         </div>
                     `;
                     galleryGrid.appendChild(card);
