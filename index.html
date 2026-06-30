@@ -630,31 +630,35 @@
 
         function generateTwin4x6Sheet() {
             const singleStripElement = buildSingleStrip();
-            const targetW = 1140; 
-            const targetH = 394; 
+            
+            // Adjust these values to control the shift (in pixels)
+            const shiftAmount = 20; 
 
             stitchCtx.fillStyle = "#ffffff"; 
             stitchCtx.fillRect(0, 0, 1200, 800);
 
+            // Left Strip: Shifted Left
             stitchCtx.save();
-            stitchCtx.translate(600, 200); 
+            stitchCtx.translate(600 - shiftAmount, 200); 
             stitchCtx.rotate(-90 * Math.PI / 180); 
-            stitchCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, -targetH/2, -targetW/2, targetH, targetW);
+            stitchCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, -394/2, -1140/2, 394, 1140);
             stitchCtx.restore();
 
+            // Right Strip: Shifted Right
             stitchCtx.save();
-            stitchCtx.translate(600, 600); 
+            stitchCtx.translate(600 + shiftAmount, 600); 
             stitchCtx.rotate(-90 * Math.PI / 180); 
-            stitchCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, -targetH/2, -targetW/2, targetH, targetW);
+            stitchCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, -394/2, -1140/2, 394, 1140);
             stitchCtx.restore();
 
             masterPrintDataUrl = hiddenStitchCanvas.toDataURL('image/png');
 
+            // --- Update Preview Canvas ---
             previewCtx.fillStyle = "#ffffff";
             previewCtx.fillRect(0, 0, 800, 1200);
-
-            previewCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, 4, 30, 392, 1140);
-            previewCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, 404, 30, 392, 1140);
+            // Apply similar offset here if you want the preview to match the print
+            previewCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, 4 - (shiftAmount/2), 30, 392, 1140);
+            previewCtx.drawImage(singleStripElement, 0, 0, singleStripElement.width, singleStripElement.height, 404 + (shiftAmount/2), 30, 392, 1140);
 
             previewDataUrl = hiddenPreviewCanvas.toDataURL('image/png');
         }
