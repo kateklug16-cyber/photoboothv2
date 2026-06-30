@@ -554,8 +554,9 @@
 
         function buildSingleStrip() {
             const contentW = 360;
-            const padLeft = 40;   // <-- white margin/border added on the left long side of the strip
-            const stripW = contentW + padLeft;
+            const padLeft = 40;   // <-- white margin/border on the left long side of the strip
+            const padRight = 40;  // <-- white margin/border on the right long side of the strip
+            const stripW = contentW + padLeft + padRight;
             const targetPhotoH = 270; 
             const gap = 16; 
             const headerH = 100; 
