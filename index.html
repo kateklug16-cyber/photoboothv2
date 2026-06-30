@@ -2,103 +2,61 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fitz's World Cup 2026 Photo Booth</title>
     <style>
-        :root {
-            --pitch-green: #1e5a38;
-            --stadium-dark: #0d2619;
-            --gold: #f1c40f;
-            --white: #ffffff;
-            --booth-red: #e74c3c;
-            --green-action: #2ecc71;
-            --admin-gray: #34495e;
-            --print-blue: #3498db;
-        }
-
-        body {
-            margin: 0;
-            padding: 25px 10px 15px 10px;
-            background: radial-gradient(circle, #1e5a38 0%, var(--stadium-dark) 100%);
-            font-family: 'Impact', 'Arial Black', sans-serif;
-            color: var(--white);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .booth-widescreen-layout { display: flex; flex-direction: row; gap: 20px; max-width: 960px; width: 100%; justify-content: center; }
-        .booth-box { position: relative; width: 640px; height: 480px; border: 10px solid #fff; border-radius: 16px; background-color: #111; overflow: hidden; }
+        :root { --pitch-green: #1e5a38; --stadium-dark: #0d2619; --gold: #f1c40f; --white: #ffffff; }
+        body { margin: 0; background: radial-gradient(circle, #1e5a38 0%, #0d2619 100%); font-family: sans-serif; color: #fff; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .booth-box { width: 640px; height: 480px; border: 10px solid #fff; border-radius: 16px; background: #000; overflow: hidden; margin-top: 20px; }
         #boothCanvas { width: 100%; height: 100%; display: block; }
-        .right-sidebar-controls { display: flex; flex-direction: column; width: 260px; gap: 12px; }
-        .frame-btn { background: #222; color: #fff; border: 3px solid #555; padding: 8px; border-radius: 8px; cursor: pointer; text-transform: uppercase; }
-        .frame-btn.active { background: var(--gold); color: #000; border-color: #fff; }
-        .snap-btn { background: var(--booth-red); color: white; padding: 15px; border: 4px solid #fff; border-radius: 12px; cursor: pointer; font-size: 1.2rem; }
-        .snap-btn:disabled { background: #7f8c8d; cursor: not-allowed; }
-        
-        #hiddenStitchCanvas, #hiddenPreviewCanvas { display: none !important; }
+        .controls { margin-top: 20px; }
+        .snap-btn { background: #e74c3c; color: white; padding: 15px 30px; border: 3px solid #fff; border-radius: 10px; cursor: pointer; font-size: 1.2rem; }
+        #hiddenStitchCanvas, #hiddenPreviewCanvas { display: none; }
     </style>
 </head>
 <body>
 
     <h1>⚽ FITZ'S 8th BIRTHDAY BOOTH 🏆</h1>
 
-    <div class="booth-widescreen-layout">
-        <div class="booth-box">
-            <video id="webcam" autoplay playsinline muted></video>
-            <canvas id="boothCanvas" width="640" height="480"></canvas>
-        </div>
-        <div class="right-sidebar-controls">
-            <button class="frame-btn active" id="btn-birthday" onclick="selectFrame('birthday', event)">🎉 Happy Birthday</button>
-            <button class="snap-btn" id="snapBtn" onclick="startPhotoSequence()">Take 3-Shot Strip!</button>
-        </div>
+    <div class="booth-box">
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="boothCanvas" width="640" height="480"></canvas>
     </div>
 
-    <div class="admin-dashboard" id="adminDashboard" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:999; padding:20px;">
-        <button onclick="document.getElementById('adminDashboard').style.display='none'">Close</button>
-        <div id="galleryGrid" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;"></div>
+    <div class="controls">
+        <button class="snap-btn" onclick="startPhotoSequence()">Take 3-Shot Strip!</button>
+        <button onclick="document.getElementById('adminDashboard').style.display='flex'">View Queue</button>
     </div>
-    <button onclick="document.getElementById('adminDashboard').style.display='flex'">View Queue</button>
+
+    <div id="adminDashboard" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:999; padding:20px; overflow:auto;">
+        <button onclick="this.parentElement.style.display='none'">Close</button>
+        <div id="galleryGrid" style="display:flex; gap:20px; flex-wrap:wrap; margin-top:20px;"></div>
+    </div>
 
     <canvas id="hiddenStitchCanvas"></canvas>
     <canvas id="hiddenPreviewCanvas"></canvas>
 
     <script>
-        const video = document.getElementById('webcam');
-        const liveCanvas = document.getElementById('boothCanvas');
-        const liveCtx = liveCanvas.getContext('2d');
-        const hiddenStitchCanvas = document.getElementById('hiddenStitchCanvas');
-        const stitchCtx = hiddenStitchCanvas.getContext('2d');
-        const hiddenPreviewCanvas = document.getElementById('hiddenPreviewCanvas');
-        const previewCtx = hiddenPreviewCanvas.getContext('2d');
-        
-        let capturedFrames = [];
-        let livePrintQueueMemory = [];
-        let currentFrame = 'birthday';
+        const video = document.getElementById('webcam'), liveCanvas = document.getElementById('boothCanvas'), liveCtx = liveCanvas.getContext('2d');
+        const hiddenStitchCanvas = document.getElementById('hiddenStitchCanvas'), stitchCtx = hiddenStitchCanvas.getContext('2d');
+        let capturedFrames = [], livePrintQueueMemory = [];
 
-        // Initialize Camera
         async function startCamera() {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             video.srcObject = stream;
-            requestAnimationFrame(renderLoop);
+            function render() {
+                liveCtx.save(); liveCtx.scale(-1, 1);
+                liveCtx.drawImage(video, -640, 0, 640, 480);
+                liveCtx.restore();
+                requestAnimationFrame(render);
+            }
+            render();
         }
-
-        function renderLoop() {
-            liveCtx.save();
-            liveCtx.scale(-1, 1);
-            liveCtx.drawImage(video, -640, 0, 640, 480);
-            liveCtx.restore();
-            requestAnimationFrame(renderLoop);
-        }
-
-        function selectFrame(f, e) { currentFrame = f; }
 
         async function startPhotoSequence() {
             capturedFrames = [];
             for(let i=0; i<3; i++) {
-                const c = document.createElement('canvas');
-                c.width=640; c.height=480;
+                const c = document.createElement('canvas'); c.width=640; c.height=480;
                 c.getContext('2d').drawImage(liveCanvas, 0, 0);
                 capturedFrames.push(c);
             }
@@ -106,47 +64,48 @@
         }
 
         function buildSingleStrip() {
-            const stripW = 360, targetPhotoH = 270, gap = 16, headerH = 100, footerH = 90, stripMargin = 40;
-            const totalW = stripW + (stripMargin * 2);
-            const totalH = headerH + (targetPhotoH * 3) + (gap * 2) + footerH + (stripMargin * 2);
-
+            const stripW = 360, photoH = 270, gap = 16, headerH = 100, footerH = 90;
             const stripCanvas = document.createElement('canvas');
-            stripCanvas.width = totalW;
-            stripCanvas.height = totalH;
+            stripCanvas.width = stripW;
+            stripCanvas.height = headerH + (photoH * 3) + (gap * 2) + footerH;
             const ctx = stripCanvas.getContext('2d');
 
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, totalW, totalH);
-
-            capturedFrames.forEach((img, index) => {
-                ctx.drawImage(img, 0, 0, 640, 480, stripMargin, stripMargin + headerH + (index * (targetPhotoH + gap)), stripW, targetPhotoH);
+            ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, stripW, stripCanvas.height);
+            capturedFrames.forEach((img, i) => {
+                ctx.drawImage(img, 0, 0, 640, 480, 10, headerH + (i * (photoH + gap)), stripW - 20, photoH);
             });
-            
-            // Header/Footer placeholder
-            ctx.fillStyle = "#0f4c81";
-            ctx.fillRect(stripMargin, stripMargin, stripW, headerH);
-            ctx.fillRect(stripMargin, totalH - footerH - stripMargin, stripW, footerH);
-            
+            ctx.fillStyle = "#0f4c81"; ctx.fillRect(0, 0, stripW, headerH);
+            ctx.fillRect(0, stripCanvas.height - footerH, stripW, footerH);
             return stripCanvas;
         }
 
         function generateTwin4x6Sheet() {
-            const singleStrip = buildSingleStrip();
+            const strip = buildSingleStrip();
+            const border = 20; // This adds your white edge
+            const finalW = strip.width + (border * 2);
+            const finalH = strip.height + (border * 2);
+
             hiddenStitchCanvas.width = 1200; hiddenStitchCanvas.height = 800;
             stitchCtx.fillStyle = "#ffffff"; stitchCtx.fillRect(0, 0, 1200, 800);
-            
-            stitchCtx.save();
-            stitchCtx.translate(300, 400); stitchCtx.rotate(-Math.PI/2);
-            stitchCtx.drawImage(singleStrip, -singleStrip.height/2, -singleStrip.width/2);
-            stitchCtx.restore();
 
-            stitchCtx.save();
-            stitchCtx.translate(900, 400); stitchCtx.rotate(-Math.PI/2);
-            stitchCtx.drawImage(singleStrip, -singleStrip.height/2, -singleStrip.width/2);
-            stitchCtx.restore();
+            // Function to draw one bordered strip
+            function drawBorderedStrip(x, y) {
+                stitchCtx.save();
+                stitchCtx.translate(x, y);
+                stitchCtx.rotate(-Math.PI/2);
+                // Draw the white background rectangle
+                stitchCtx.fillStyle = "#ffffff";
+                stitchCtx.fillRect(-finalH/2, -finalW/2, finalH, finalW);
+                // Draw the actual strip inside the border
+                stitchCtx.drawImage(strip, -strip.height/2, -strip.width/2);
+                stitchCtx.restore();
+            }
 
-            livePrintQueueMemory.push({ printImg: hiddenStitchCanvas.toDataURL() });
-            alert("Strip added to queue!");
+            drawBorderedStrip(300, 400);
+            drawBorderedStrip(900, 400);
+
+            livePrintQueueMemory.push(hiddenStitchCanvas.toDataURL());
+            alert("Added to queue with border!");
         }
 
         window.onload = startCamera;
