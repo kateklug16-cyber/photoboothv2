@@ -386,6 +386,7 @@
         <div class="kids-preview-content">
             <h2>🔥 LOOKING GOOD! HERE IS YOUR STRIP! 🔥</h2>
             <img class="kids-strip-img" id="kidsPreviewImg" src="" alt="Your Strip Preview">
+            <button class="snap-btn" style="padding:10px 24px; font-size:1.1rem; margin-top:0;" onclick="printSingleCard(masterPrintDataUrl)">🖨️ Print This Strip</button>
             <div class="auto-close-timer" id="autoCloseText">Next team up in 20...</div>
         </div>
     </div>
@@ -435,6 +436,28 @@
         let stripCounter = 0;
         let galleryFilter = 'all'; // 'all' | 'undownloaded'
 
+        const STORAGE_KEY = 'fitzBoothPrintQueue';
+
+        function saveQueueToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(livePrintQueueMemory));
+            } catch (e) {
+                console.warn('Could not save queue to localStorage (maybe full):', e);
+            }
+        }
+
+        function loadQueueFromStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    livePrintQueueMemory = JSON.parse(saved);
+                }
+            } catch (e) {
+                console.warn('Could not load saved queue:', e);
+                livePrintQueueMemory = [];
+            }
+        }
+
         // Load custom assets
         const customHeaderImg = new Image();
         customHeaderImg.src = 'header.png';
@@ -464,6 +487,7 @@
         }
 
         async function startCamera() {
+            loadQueueFromStorage();
             try {
                 const constraints = {
                     audio: false,
@@ -641,6 +665,7 @@
                 previewImg: previewDataUrl,
                 downloaded: false
             });
+            saveQueueToStorage();
             updateQueueStatus();
         }
 
@@ -658,6 +683,7 @@
                     link.click();
                     document.body.removeChild(link);
                     item.downloaded = true;
+                    saveQueueToStorage();
                     if (idx === livePrintQueueMemory.length - 1) {
                         updateQueueStatus();
                         if (adminDashboard.style.display === "flex") openAdminDashboard();
@@ -669,6 +695,7 @@
         function markDownloaded(idx) {
             if (livePrintQueueMemory[idx]) {
                 livePrintQueueMemory[idx].downloaded = true;
+                saveQueueToStorage();
                 updateQueueStatus();
                 openAdminDashboard();
             }
@@ -794,6 +821,7 @@
             if (accessCode === "5283") {
                 if(confirm("Passcode confirmed. Are you completely sure you want to delete all saved session cache strips?")) {
                     livePrintQueueMemory = [];
+                    saveQueueToStorage();
                     openAdminDashboard(); 
                 }
             } else {
